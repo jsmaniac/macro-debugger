@@ -141,12 +141,13 @@
     (set! mode 'file)]
    [("-m" "--module-path") "Interpret arguments as module-paths"
     (set! mode 'module-path)]
+   [("-b") "Same as --exclude racket/base"
+    (set! excludes (cons 'racket/base excludes))]
+   #:multi
    [("-x" "--exclude") mod "Exclude <mod> and its dependencies"
     (set! excludes (cons mod excludes))]
    [("-X" "--exclude-deps") mod "Exclude the dependencies of <mod> (but not <mod> itself)"
     (set! exclude-deps (cons mod exclude-deps))]
-   [("-b") "Same as --exclude racket/base"
-    (set! excludes (cons 'racket/base excludes))]
    #:args module-path
    (let ()
      (define (->modpath x)
