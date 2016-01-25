@@ -120,6 +120,28 @@
              (pretty-write direct-requirers))]))
       (newline))))
 
+(define (dependencies->graphviz #:exclude [exclude null]
+                                #:exclude-deps [exclude-deps null]
+                                . module-paths)
+  (define (show m)
+    (parameterize ([pretty-print-columns 'infinity])
+      (write (pretty-format m))))
+
+  (printf "digraph deps {\n")
+  (for ([dep (in-list (apply get-dependencies
+                             #:exclude exclude
+                             #:exclude-deps exclude-deps
+                             module-paths))])
+    (let ([mod (car dep)]
+          [direct-requirers (cadr dep)])
+      (for ([direct-requirer (in-list direct-requirers)])
+        (printf "  ")
+        (show direct-requirer)
+        (printf " -> ")
+        (show mod)
+        (printf "\n"))))
+  (printf "}\n"))
+
 ;; ====
 
 (define (main . argv)
@@ -128,6 +150,7 @@
   (define multi-line-context? #f)
   (define excludes null)
   (define exclude-deps null)
+  (define graphviz? #f)
   (command-line
    #:program (short-program+command-name)
    #:argv argv
@@ -143,6 +166,9 @@
     (set! mode 'module-path)]
    [("-b") "Same as --exclude racket/base"
     (set! excludes (cons 'racket/base excludes))]
+   [("-g" "--graphviz") "Output in graphviz (dot) format (implies --context)"
+    (set! graphviz? #t)
+    (set! context? #t)]
    #:multi
    [("-x" "--exclude") mod "Exclude <mod> and its dependencies"
     (set! excludes (cons mod excludes))]
@@ -161,12 +187,17 @@
                 ((module-path)
                  (read (open-input-string x))))]
              [else x]))
-     (apply show-dependencies
-            #:exclude (map ->modpath excludes)
-            #:exclude-deps (map ->modpath exclude-deps)
-            #:show-context? context?
-            #:multi-line-context? multi-line-context?
-            (map ->modpath module-path)))))
+     (if graphviz?
+         (apply dependencies->graphviz
+                #:exclude (map ->modpath excludes)
+                #:exclude-deps (map ->modpath exclude-deps)
+                (map ->modpath module-path))
+         (apply show-dependencies
+                #:exclude (map ->modpath excludes)
+                #:exclude-deps (map ->modpath exclude-deps)
+                #:show-context? context?
+                #:multi-line-context? multi-line-context?
+                (map ->modpath module-path))))))
 
 (module* main #f
   (apply main (vector->list (current-command-line-arguments))))
